@@ -14,7 +14,7 @@ import {
 
 import firebaseClient from "../utils/firebaseClient";
 import { useAuth } from "../utils/auth";
-import IndexStyle from "../components/styles/indexStyle";
+import IndexStyle from "../styles/components/styles/indexStyle";
 
 export default function Home() {
   firebaseClient();
