@@ -7,7 +7,6 @@ import Header from "../../styles/components/Header";
 import Navbar from "../../styles/components/Navbar";
 import firebaseClient from "../../utils/firebaseClient";
 import { verifyIdToken } from "../../utils/firebaseAdmin";
-import * as yup from "yup";
 import { NextPageContext } from "next";
 import { useRouter } from "next/router";
 
@@ -45,7 +44,7 @@ const Cadastro = ({ ufs, session }: IProps) => {
   const [cpf, setCpf] = useState("");
   const [cidade, setCidade] = useState("");
   const [cidades, setCidades] = useState<ICidade[]>([]);
-  const [estado, setEstado] = useState("");
+  const [estado, setEstado] = useState(ufs[0].sigla);
   const [errors, setErrors] = useState([]);
   const [id, setId] = useState(null);
   const [validated, setValidated] = useState(false);
@@ -67,6 +66,7 @@ const Cadastro = ({ ufs, session }: IProps) => {
         setEstadoCivil(docData["estadoCivil"]);
         setIdade(docData["idade"]);
         setId(id);
+        getCidades();
       })
       .catch((err) => alert(err));
   };
@@ -78,36 +78,34 @@ const Cadastro = ({ ufs, session }: IProps) => {
     }
   }, []);
 
-  useEffect(() => {
-    async function getCidades() {
-      let uf: IEstado = ufs.filter((val: IEstado) => val.nome == estado)[0];
-      if (uf) {
-        await fetch(
-          `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf.sigla}/municipios`
-        )
-          .then((response) => response.json())
-          .then((data) => {
-            setCidades(data);
-          })
-          .catch((err) => setErrors(err));
-      }
+  const getCidades = async () => {
+    let uf: IEstado = ufs.filter((val: IEstado) => val.nome == estado)[0];
+    if (uf) {
+      await fetch(
+        `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf.sigla}/municipios`
+      )
+        .then((response) => response.json())
+        .then((data) => {
+          setCidades(data);
+        })
+        .catch((err) => setErrors(err));
     }
+  }
 
+  useEffect(() => {
     getCidades();
   }, [estado]);
 
-  let schema = yup.object().shape({
-    nome: yup.string().required(),
-    idade: yup.number().required(),
-    estadoCivil: yup.string().oneOf(estadosCivis).required(),
-    cpf: yup.string().min(12).max(15),
-    cidade: yup.string().required(),
-    estado: yup.string().required().max(2),
-  });
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setValidated(true);
+    
+    setValidated(false);
+
+    if(e.currentTarget.checkValidity() === false) {
+      setValidated(true);
+      return false;
+    }
+
     const newPerson = {
       nome,
       idade,
@@ -117,31 +115,12 @@ const Cadastro = ({ ufs, session }: IProps) => {
       estado,
     };
 
-    schema
-      .isValid(newPerson)
-      .then(() => {
-        e.currentTarget.checkValidity();
-
-        let query: any = firebase.firestore().collection("cadastros");
-        if (id != null) {
-          query = query.doc(id).update(newPerson);
-        } else {
-          query = query.add(newPerson);
-        }
-        query
-          .then(() => {
-            alert("Success");
-            reset();
-          })
-          .catch((err) => {
-            setErrors(err.message);
-          });
-          setValidated(false);
-      })
-      .catch((err) => {
-        setErrors(err);
-        setValidated(true);
-      });
+    if (id != null) {
+      await firebase.firestore().collection("cadastros").doc(id).update(newPerson);
+    } else {
+      await firebase.firestore().collection("cadastros").add(newPerson);
+    }
+    reset();
   };
 
   const reset = () => {
@@ -163,9 +142,6 @@ const Cadastro = ({ ufs, session }: IProps) => {
       <Navbar />
       <Header title="Novo Cadastro" />
       <div className="body mt-5 px-5">
-        {/* <Alert variant="danger" className="position-absolute">
-                Erro no campo x
-            </Alert> */}
         <Row>
           <Col>
             <h3>Informações Pessoais</h3>
@@ -192,9 +168,10 @@ const Cadastro = ({ ufs, session }: IProps) => {
                   <Form.Group controlId="validation-1">
                     <Form.Label>Idade</Form.Label>
                     <Form.Control
-                      type="text"
+                      type="number"
                       value={idade}
                       required
+                      min={1}
                       onChange={(e) => setIdade(parseInt(e.target.value))}
                     />
 
@@ -231,7 +208,8 @@ const Cadastro = ({ ufs, session }: IProps) => {
                       type="text"
                       value={cpf}
                       pattern="\d{3}\.?\d{3}\.?\d{3}-?\d{2}"
-                      minLength={12 }
+                      minLength={12}
+                      maxLength={15}
                       onChange={(e) => setCpf(e.target.value)}
                     />
                     <Form.Control.Feedback type="invalid">
@@ -283,7 +261,7 @@ const Cadastro = ({ ufs, session }: IProps) => {
                   </Form.Group>
                 </Col>
               </Row>
-              <Button className="mt-3">
+              <Button className="mt-3" type="submit">
                 {id ? "Atualizar" : "Cadastrar"}
               </Button>
             </Form>
@@ -311,14 +289,14 @@ export async function getServerSideProps(context: NextPageContext) {
     "https://servicodados.ibge.gov.br/api/v1/localidades/estados"
   )
     .then((response) => response.json())
-    .then((data: IEstado[]) => {
+    .then((data) => {
       return data;
     });
   let ufsFiltered = ufs.sort((a, b) => a.nome.localeCompare(b.nome));
   return {
     props: {
       session,
-      ufs: ufsFiltered,
+      ufs: JSON.parse(JSON.stringify(ufsFiltered)),
     },
   };
 }
