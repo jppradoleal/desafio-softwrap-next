@@ -1,6 +1,6 @@
 import React, { FormEvent, useState, useEffect } from "react";
 import styled from "styled-components";
-import { Button, Col, Form, Row } from "react-bootstrap";
+import { Button, Col, Form, Row, Toast } from "react-bootstrap";
 import nookies from "nookies";
 import firebase from "firebase/app";
 import Header from "../../styles/components/Header";
@@ -51,7 +51,6 @@ const Cadastro = ({ ufs, session }: IProps) => {
 
   const router = useRouter();
 
-
   const loadEdit = async (id: string | string[]) => {
     await firebase
       .firestore()
@@ -90,7 +89,7 @@ const Cadastro = ({ ufs, session }: IProps) => {
         })
         .catch((err) => setErrors(err));
     }
-  }
+  };
 
   useEffect(() => {
     getCidades();
@@ -98,10 +97,10 @@ const Cadastro = ({ ufs, session }: IProps) => {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     setValidated(false);
 
-    if(e.currentTarget.checkValidity() === false) {
+    if (e.currentTarget.checkValidity() === false) {
       setValidated(true);
       return false;
     }
@@ -116,10 +115,26 @@ const Cadastro = ({ ufs, session }: IProps) => {
     };
 
     if (id != null) {
-      await firebase.firestore().collection("cadastros").doc(id).update(newPerson);
+      await firebase
+        .firestore()
+        .collection("cadastros")
+        .doc(id)
+        .update(newPerson)
+        .catch((err) => {
+          setErrors(err);
+          return;
+        });
     } else {
-      await firebase.firestore().collection("cadastros").add(newPerson);
+      await firebase
+        .firestore()
+        .collection("cadastros")
+        .add(newPerson)
+        .catch((err) => {
+          setErrors(err);
+          return;
+        });
     }
+    alert;
     reset();
   };
 
@@ -139,6 +154,14 @@ const Cadastro = ({ ufs, session }: IProps) => {
 
   return (
     <CadastroStyled>
+      <Toast
+        show={errors?.length > 0}
+        delay={5000}
+        autohide
+        onClose={() => setErrors([])}
+      >
+        <Toast.Body>{errors}</Toast.Body>
+      </Toast>
       <Navbar />
       <Header title="Novo Cadastro" />
       <div className="body mt-5 px-5">
@@ -247,7 +270,9 @@ const Cadastro = ({ ufs, session }: IProps) => {
                       value={cidade}
                       onChange={(e) => setCidade(e.target.value)}
                       required
-                      aria-readonly={cidades.length <= 0}
+                      aria-readonly={
+                        cidades.length <= 0 || estado != null || estado != ""
+                      }
                     >
                       {cidades.map((val, index) => (
                         <option value={val.nome} key={`cidade-key-${index}`}>

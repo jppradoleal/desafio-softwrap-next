@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, createContext } from "react";
+import React, { useState, useEffect, useContext, createContext, ReactNode, FunctionComponent } from "react";
 import nookies from 'nookies';
 
 import firebase from 'firebase/app';
@@ -8,7 +8,11 @@ import firebaseClient from './firebaseClient';
 
 const AuthContext = createContext({});
 
-export const AuthProvider = ({children}) => {
+interface IAuthProvider {
+    children: FunctionComponent
+}
+
+export const AuthProvider = ({children}: IAuthProvider) => {
     firebaseClient();
     const [user, setUser] = useState(null);
 

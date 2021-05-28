@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { NextPageContext } from "next";
 import nookies from "nookies";
-import { Button, ButtonGroup, ProgressBar, Table } from "react-bootstrap";
+import { Button, ButtonGroup, Table } from "react-bootstrap";
 import firebase from "firebase";
 import firebaseClient from "../../utils/firebaseClient";
 import Header from "../../styles/components/Header";
@@ -17,32 +17,30 @@ const Home = ({ session }) => {
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(0);
 
+  let query = firebase.firestore().collection("cadastros").orderBy("cpf");
+
   const nextPage = async (last) => {
-    await firebase
-      .firestore()
-      .collection("cadastros")
-      .orderBy("cpf")
+    console.log(last);
+    await query
       .startAfter(last["cpf"])
       .limit(limit)
       .get()
-      .then((data) => {
-        setData(data.docs.map((v) => v.data()));
-        setPage(page+1);
+      .then((receivedData) => {
+        console.log()
+        setData(receivedData.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+        setPage(page + 1);
       });
   };
 
-  const prevPage = (first) => {
-    firebase
-      .firestore()
-      .collection("cadastros")
-      .orderBy("cpf")
-      .limit(limit)
+  const prevPage = async (first) => {
+    console.log(first);
+    await query
       .endBefore(first["cpf"])
       .limitToLast(limit)
       .get()
-      .then((data) => {
-        setData(data.docs.map((v) => v.data()));
-        setPage(page-1);
+      .then((receivedData) => {
+        setData(receivedData.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+        setPage(page - 1);
       });
   };
 
@@ -59,7 +57,9 @@ const Home = ({ session }) => {
         .limit(limit)
         .get()
         .then((receivedData) => {
-          setData(receivedData.docs.map((doc) => ({id: doc.id, ...doc.data()})));
+          setData(
+            receivedData.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+          );
         });
     })();
   }, []);
@@ -91,17 +91,19 @@ const Home = ({ session }) => {
                   <td>{doc.cpf}</td>
                   <td>{doc.cidade}</td>
                   <td>{doc.estado}</td>
-                  <td><Link href={{pathname: "/cadastro", query: {id: doc.id}}}>Editar</Link></td>
+                  <td>
+                    <Link
+                      href={{ pathname: "/cadastro", query: { id: doc.id } }}
+                    >
+                      Editar
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </Table>
           <div className="flex-div">
-            <p>
-              Mostrando {page * limit} até{" "}
-              {page + limit} de{" "}
-              {size} resultados
-            </p>
+            <p>Mostrando {(page+1)*limit-limit+1} até {(page+1)*limit <= size ? (page+1)*limit : size} de {size} resultados</p>
             <ButtonGroup>
               <Button
                 variant="light"
@@ -117,7 +119,7 @@ const Home = ({ session }) => {
                 onClick={() => {
                   nextPage(data[data.length - 1]);
                 }}
-                disabled={page+limit == size}
+                disabled={(page+1)*limit >= size}
               >
                 Próximo
               </Button>
