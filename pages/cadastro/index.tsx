@@ -1,6 +1,6 @@
 import React, { FormEvent, useState, useEffect } from "react";
 import styled from "styled-components";
-import { Button, Col, Form, Row, Toast } from "react-bootstrap";
+import { Button, ButtonGroup, Col, Form, Row, Toast } from "react-bootstrap";
 import nookies from "nookies";
 import firebase from "firebase/app";
 import Header from "../../styles/components/Header";
@@ -67,7 +67,7 @@ const Cadastro = ({ ufs, session }: IProps) => {
         setId(id);
         getCidades();
       })
-      .catch((err) => alert(err));
+      .catch((err) => setErrors(err));
   };
 
   useEffect(() => {
@@ -119,7 +119,9 @@ const Cadastro = ({ ufs, session }: IProps) => {
         .firestore()
         .collection("cadastros")
         .doc(id)
-        .update(newPerson)
+        .update(newPerson).then((val) => {
+          setId(null);
+        })
         .catch((err) => {
           setErrors(err);
           return;
@@ -134,8 +136,22 @@ const Cadastro = ({ ufs, session }: IProps) => {
           return;
         });
     }
-    alert;
+    alert("Success");
     reset();
+  };
+
+  const handleDelete = async () => {
+    await firebase
+      .firestore()
+      .collection("cadastros")
+      .doc(id)
+      .delete()
+      .then(() => {
+        setId(null);
+        alert("Deleted Successfuly")
+      })
+      .catch((err) => setErrors(err));
+    router.back();
   };
 
   const reset = () => {
@@ -286,9 +302,16 @@ const Cadastro = ({ ufs, session }: IProps) => {
                   </Form.Group>
                 </Col>
               </Row>
-              <Button className="mt-3" type="submit">
-                {id ? "Atualizar" : "Cadastrar"}
-              </Button>
+              <ButtonGroup className="mt-3">
+                {id && (
+                  <Button variant="danger" type="button" className="mr-0" onClick={handleDelete}>
+                    Deletar
+                  </Button>
+                )}
+                <Button type="submit" className="ml-0">
+                  {id ? "Atualizar" : "Cadastrar"}
+                </Button>
+              </ButtonGroup>
             </Form>
           </Col>
         </Row>
